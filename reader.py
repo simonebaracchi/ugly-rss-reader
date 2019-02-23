@@ -16,7 +16,6 @@ url = None
 def open_connection():
     return sqlite3.connect(db_name)
 def close_connection(db):
-    db.commit()
     db.close()
 
 def table_exists(db, table):
@@ -37,6 +36,7 @@ def db_init():
     except:
         print('failed to initialize database')
         raise
+    db.commit()
     close_connection(db)
 
 
@@ -53,6 +53,7 @@ def is_read(db, guid):
 def set_read(db, guid):
     c = db.cursor()
     query = c.execute('''INSERT OR REPLACE INTO RSS(guid) VALUES (?)''', (guid,))
+    db.commit()
 
 def get_value_from(entry, value, default):
     if isinstance(value, list):
