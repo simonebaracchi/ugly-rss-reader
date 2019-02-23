@@ -2,11 +2,16 @@
 
 import sqlite3
 import sys
+import time
 import feedparser
 from pprint import pprint
 
 db_name = 'rss.db'
-url = sys.argv[1]
+debug = False
+just_one = False
+dry_run = False
+days = None
+url = None
 
 def open_connection():
     return sqlite3.connect(db_name)
@@ -49,15 +54,67 @@ def set_read(db, guid):
     c = db.cursor()
     query = c.execute('''INSERT OR REPLACE INTO RSS(guid) VALUES (?)''', (guid,))
 
+def get_value_from(entry, value, default):
+    if isinstance(value, list):
+        for attempt in value:
+            if attempt in entry:
+                return entry[attempt]
+    elif isinstance(value, str):
+        if value in entry:
+            return entry[value]
+    return default
+
+# Process command line flags
+for arg in sys.argv[1:]:
+    if arg == '--debug':
+        debug = True
+    elif arg == '--1':
+        just_one = True
+    elif arg == '--dry-run':
+        dry_run = True
+    elif arg.startswith('--days='):
+        try:
+            days = int(arg[7:])
+        except:
+            print("Please use --days=<number>.")
+            sys.exit(1)
+    else:
+        url = arg
+if url == None:
+    print('No URL specified, exiting.')
+    sys.exit(1)
+
 db_init()
 db = open_connection()
 d = feedparser.parse(url)
+
 for entry in d['entries']:
-    guid = entry['link']
+    if debug:
+        pprint(entry)
+
+    guid = get_value_from(entry, ['guid', 'id', 'link', 'title'], None)
+    if guid is None:
+        continue
     if is_read(db, guid):
         continue
-    print('{} ({})\n{}\n{}\n\n'.format(entry['title'], entry['published'], entry['summary'], entry['link']))
-    set_read(db, guid)
+    
+    if days is not None:
+        entry_time = time.mktime(entry['published_parsed'])
+        now = time.time()
+        if (now - entry_time) > days * 86400:
+            continue
+    
+    title = get_value_from(entry, 'title', '')
+    published = '(' + get_value_from(entry, 'published', '') + ')'
+    summary = get_value_from(entry, 'summary', '')
+    link = get_value_from(entry, ['link', 'id'], '')
 
+    print('{} {}\n---{}\n---{}\n\n'.format(title, published, summary, link))
+
+    if not dry_run:
+        set_read(db, guid)
+
+    if just_one:
+        break
         
 close_connection(db)
