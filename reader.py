@@ -110,7 +110,7 @@ for entry in d['entries']:
     summary = get_value_from(entry, 'summary', '')
     link = get_value_from(entry, ['link', 'id'], '')
 
-    print('{} {}\n---{}\n---{}\n\n'.format(title, published, summary, link))
+    print('{} {}\n{}\n{}\n\n'.format(title, published, summary, link))
 
     if not dry_run:
         set_read(db, guid)
