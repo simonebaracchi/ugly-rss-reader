@@ -2,10 +2,12 @@
 
 import sqlite3
 import sys
+import os
 import time
 import feedparser
 from pprint import pprint
 
+os.chdir(os.path.dirname(sys.argv[0]))
 db_name = 'rss.db'
 debug = False
 just_one = False
