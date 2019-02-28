@@ -7,7 +7,7 @@ import time
 import feedparser
 from pprint import pprint
 
-os.chdir(os.path.dirname(sys.argv[0]))
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 db_name = 'rss.db'
 debug = False
 just_one = False
