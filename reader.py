@@ -32,12 +32,19 @@ def table_exists(db, table):
     else:
         return True
 
+def add_column(cursor, column):
+    try:
+        cursor.execute('''ALTER TABLE RSS ADD COLUMN ''' + column)
+    except sqlite3.OperationalError:
+        pass
+
 def db_init():
     db = open_connection()
     try:
         c = db.cursor()
         if not table_exists(db, 'Stock'):
             c.execute('''CREATE TABLE IF NOT EXISTS RSS (guid text primary key)''')
+        add_column(c, 'readdate datetime')
     except:
         print('failed to initialize database')
         raise
@@ -57,7 +64,7 @@ def is_read(db, guid):
     
 def set_read(db, guid):
     c = db.cursor()
-    query = c.execute('''INSERT OR REPLACE INTO RSS(guid) VALUES (?)''', (guid,))
+    query = c.execute('''INSERT OR REPLACE INTO RSS(guid, readdate) VALUES (?, datetime('now'))''', (guid,))
     db.commit()
 
 def get_value_from(entry, value, default):
