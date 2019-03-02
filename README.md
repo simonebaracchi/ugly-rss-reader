@@ -17,6 +17,14 @@ It will produce unread feed items (with title, summary, date of publication, lin
 
 Ignores items older than the specified number of days.
 
+  * `--grep=<pattern>`
+
+Ignores items that do not match the given pattern. Pattern is a regular expression. You might need to enclose it between quotes.
+
+  * `--grepv=<pattern>`
+
+Reverse grep (as in grep -v); excludes items that match the pattern.
+
   * `--1`
 
 Prints one news item and exits.

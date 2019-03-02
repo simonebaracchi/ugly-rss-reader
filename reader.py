@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import os
 import time
+import re
 import feedparser
 from pprint import pprint
 
@@ -14,6 +15,8 @@ just_one = False
 dry_run = False
 days = None
 url = None
+grep = None
+grepv = None
 
 def open_connection():
     return sqlite3.connect(db_name)
@@ -81,6 +84,10 @@ for arg in sys.argv[1:]:
         except:
             print("Please use --days=<number>.")
             sys.exit(1)
+    elif arg.startswith('--grep='):
+        grep = arg[7:]
+    elif arg.startswith('--grepv='):
+        grepv = arg[8:]
     else:
         url = arg
 if url == None:
@@ -105,6 +112,12 @@ for entry in d['entries']:
         entry_time = time.mktime(entry['published_parsed'])
         now = time.time()
         if (now - entry_time) > days * 86400:
+            continue
+    if grep is not None:
+        if re.search(grep, guid) is None:
+            continue
+    if grepv is not None:
+        if re.search(grepv, guid) is not None:
             continue
     
     title = get_value_from(entry, 'title', '')
