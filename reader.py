@@ -4,9 +4,12 @@ import sqlite3
 import sys
 import os
 import time
+import random
 import re
-import feedparser
+import urllib
+import json
 from pprint import pprint
+import feedparser
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 db_name = 'rss.db'
@@ -17,6 +20,8 @@ days = None
 url = None
 grep = None
 grepv = None
+tagcontent = None
+skipuntagged = False
 
 def open_connection():
     return sqlite3.connect(db_name)
@@ -45,6 +50,8 @@ def db_init():
         if not table_exists(db, 'Stock'):
             c.execute('''CREATE TABLE IF NOT EXISTS RSS (guid text primary key)''')
         add_column(c, 'readdate datetime')
+        add_column(c, 'tags text')
+        add_column(c, 'ignored integer')
     except:
         print('failed to initialize database')
         raise
@@ -62,9 +69,14 @@ def is_read(db, guid):
         return False
     return True
     
-def set_read(db, guid):
+def set_read(db, guid, tags):
     c = db.cursor()
-    query = c.execute('''INSERT OR REPLACE INTO RSS(guid, readdate) VALUES (?, datetime('now'))''', (guid,))
+    query = c.execute('''INSERT OR REPLACE INTO RSS(guid, readdate, tags) VALUES (?, datetime('now'), ?)''', (guid, json.dumps(tags)))
+    db.commit()
+
+def set_ignored(db, guid):
+    c = db.cursor()
+    query = c.execute('''INSERT OR REPLACE INTO RSS(guid, readdate, ignored) VALUES (?, datetime('now'), 1)''', (guid,))
     db.commit()
 
 def get_value_from(entry, value, default):
@@ -95,15 +107,25 @@ for arg in sys.argv[1:]:
         grep = arg[7:]
     elif arg.startswith('--grepv='):
         grepv = arg[8:]
+    elif arg.startswith('--tag-content='):
+        tagcontent = arg[14:]
+    elif arg == '--skip-untagged':
+        skipuntagged = True
     else:
         url = arg
 if url == None:
     print('No URL specified, exiting.')
     sys.exit(1)
 
+if skipuntagged and tagcontent is None:
+    print('You must provide a regex with --tag-content to be able to skip untagged items.')
+    sys.exit(1)
+
 db_init()
 db = open_connection()
 d = feedparser.parse(url)
+
+delay = False
 
 for entry in d['entries']:
     if debug:
@@ -132,12 +154,28 @@ for entry in d['entries']:
     summary = get_value_from(entry, 'summary', '')
     link = get_value_from(entry, ['link', 'id'], '')
 
+    tags = None
+    if tagcontent is not None and link is not '':
+        if delay:
+            time.sleep(random.randint(2, 4))
+        delay = True
+        thing = urllib.request.urlopen(link).read().decode()
+        if re.search(tagcontent, thing) is not None:
+            # Note that tags will be [] if the regex matches but has no groups
+            tags = re.findall(tagcontent, thing)
+            if tags is not None and len(tags) is not 0:
+                print("Tags: " + ', '.join(tags))
+    if skipuntagged and tags is None:
+        set_ignored(db, guid)
+        continue
+
     print('{} {}\n{}\n{}\n\n'.format(title, published, summary, link))
 
     if not dry_run:
-        set_read(db, guid)
+        set_read(db, guid, tags)
 
     if just_one:
         break
+
         
 close_connection(db)

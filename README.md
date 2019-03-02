@@ -25,6 +25,14 @@ Ignores items that do not match the given pattern. Pattern is a regular expressi
 
 Reverse grep (as in grep -v); excludes items that match the pattern.
 
+  * `--tag-content=<pattern>`
+
+Will try the supplied regular expression against the article contents. If the regex contains capturing groups, the captured content will be printed on screen and saved in the database (for possible later use). It will parse HTML with regular expressions: use at your own risk.
+
+  * `--skip-untagged`
+
+Will ignore items whose content does not match the regex supplied with `--tag-content`.
+
   * `--1`
 
 Prints one news item and exits.
